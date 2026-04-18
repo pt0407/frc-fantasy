@@ -7,7 +7,8 @@ import { Search, Zap, Clock, CheckCircle2, Gavel, Eye, EyeOff } from 'lucide-rea
 
 function getCurrentPicker(league) {
   if (!league?.draftOrder?.length) return null;
-  const { draftOrder, draftPick, draftType } = league;
+  const { draftOrder, draftPick } = league;
+  const draftType = league.draftType || 'snake';
   const n = draftOrder.length;
   const idxInRound = draftPick % n;
   const round = Math.floor(draftPick / n);

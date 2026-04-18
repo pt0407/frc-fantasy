@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getUserProfile, placeBet, getUserBets, resolvePendingBets } from '../lib/firestore';
+import { getUserProfile, placeBet, getUserBets, resolvePendingBets, getBetLeaderboard } from '../lib/firestore';
 import { getUpcomingEvents, getEventMatches } from '../lib/tba';
-import { Coins, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { Coins, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown, Trophy } from 'lucide-react';
 
 function BetModal({ match, onClose, onBet, coins }) {
   const [alliance, setAlliance] = useState('red');
-  const [amount, setAmount] = useState(50);
+  const [amount, setAmount] = useState(coins > 0 ? Math.min(50, coins) : 0);
   const [loading, setLoading] = useState(false);
+  const isFree = coins <= 0;
 
   async function submit() {
     setLoading(true);
     try {
-      await onBet(match, alliance, amount);
+      await onBet(match, alliance, isFree ? 0 : amount);
       onClose();
     } catch (e) {
       alert(e.message);
@@ -26,59 +27,40 @@ function BetModal({ match, onClose, onBet, coins }) {
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <h2 className="text-white font-bold text-lg mb-1">Place Bet</h2>
-        <p className="text-slate-400 text-sm mb-5">{matchLabel(match)}</p>
+        <p className="text-slate-400 text-sm mb-1">{matchLabel(match)}</p>
+        {isFree && (
+          <p className="text-yellow-400 text-xs bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-2 mb-4">
+            🪙 You're out of coins — this is a <strong>free bet</strong>. Win = +5 coins, Lose = nothing.
+          </p>
+        )}
+        {!isFree && <p className="text-slate-600 text-xs mb-4">{coins} coins available</p>}
 
         <div className="flex gap-2 mb-5">
-          <button
-            onClick={() => setAlliance('red')}
-            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${alliance === 'red' ? 'bg-red-600 text-white' : 'bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white'}`}
-          >
-            🔴 Red Alliance
-          </button>
-          <button
-            onClick={() => setAlliance('blue')}
-            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${alliance === 'blue' ? 'bg-blue-600 text-white' : 'bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white'}`}
-          >
-            🔵 Blue Alliance
-          </button>
+          <button onClick={() => setAlliance('red')} className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${alliance === 'red' ? 'bg-red-600 text-white' : 'bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white'}`}>🔴 Red Alliance</button>
+          <button onClick={() => setAlliance('blue')} className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${alliance === 'blue' ? 'bg-blue-600 text-white' : 'bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white'}`}>🔵 Blue Alliance</button>
         </div>
 
-        <div className="mb-5">
-          <label className="block text-xs font-medium text-slate-400 mb-2">Bet Amount (you have {coins} coins)</label>
-          <input
-            type="number"
-            min={10}
-            max={coins}
-            step={10}
-            value={amount}
-            onChange={(e) => setAmount(Math.min(Number(e.target.value), coins))}
-            className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
-          />
-          <div className="flex gap-2 mt-2">
-            {[25, 50, 100, 200].map((v) => (
-              <button
-                key={v}
-                onClick={() => setAmount(Math.min(v, coins))}
-                className="flex-1 py-1.5 text-xs bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white rounded-lg transition-all"
-              >
-                {v}
-              </button>
-            ))}
+        {!isFree && (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-slate-400 mb-2">Bet Amount</label>
+            <input type="number" min={10} max={coins} step={10} value={amount}
+              onChange={(e) => setAmount(Math.min(Number(e.target.value), coins))}
+              className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500" />
+            <div className="flex gap-2 mt-2">
+              {[25, 50, 100, 200].map((v) => (
+                <button key={v} onClick={() => setAmount(Math.min(v, coins))}
+                  className="flex-1 py-1.5 text-xs bg-[#0f1117] border border-[#2a2d3a] text-slate-400 hover:text-white rounded-lg transition-all">{v}</button>
+              ))}
+            </div>
+            <p className="text-slate-500 text-xs mt-2">Win: +{amount} coins · Lose: -{amount} coins</p>
           </div>
-        </div>
-
-        <p className="text-slate-400 text-xs mb-4">Win: +{amount} coins · Lose: -{amount} coins</p>
+        )}
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-[#2a2d3a] text-slate-300 rounded-xl text-sm hover:border-slate-500 transition-all">
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={loading || amount < 10}
-            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-          >
-            {loading ? 'Placing...' : 'Confirm Bet'}
+          <button onClick={onClose} className="flex-1 py-2.5 border border-[#2a2d3a] text-slate-300 rounded-xl text-sm hover:border-slate-500 transition-all">Cancel</button>
+          <button onClick={submit} disabled={loading || (!isFree && amount < 10)}
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50">
+            {loading ? 'Placing...' : isFree ? 'Place Free Bet' : 'Confirm Bet'}
           </button>
         </div>
       </div>
@@ -126,6 +108,7 @@ export default function BettingPage() {
   const [betModal, setBetModal] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [tab, setTab] = useState('matches');
+  const [leaderboard, setLeaderboard] = useState([]);
   const [resolving, setResolving] = useState(false);
 
   async function refreshBets() {
@@ -150,6 +133,7 @@ export default function BettingPage() {
     if (!user) return;
     refreshBets();
     resolvePendingBets(user.uid).then(() => refreshBets()).catch(() => {});
+    getBetLeaderboard().then(setLeaderboard).catch(() => {});
     getUpcomingEvents().then((e) => {
       setEvents(e);
       if (e.length > 0) setSelectedEvent(e[0].key);
@@ -208,6 +192,12 @@ export default function BettingPage() {
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'mybets' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
         >
           My Bets ({myBets.length})
+        </button>
+        <button
+          onClick={() => setTab('leaderboard')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'leaderboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        >
+          🏆 Leaderboard
         </button>
       </div>
 
@@ -336,6 +326,35 @@ export default function BettingPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {tab === 'leaderboard' && (
+        <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#2a2d3a] flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-yellow-400" />
+            <h2 className="text-white font-semibold">Coin Leaderboard</h2>
+          </div>
+          {leaderboard.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-10">Loading...</p>
+          ) : (
+            <div className="divide-y divide-[#2a2d3a]">
+              {leaderboard.map((entry, i) => (
+                <div key={entry.uid} className={`flex items-center gap-4 px-5 py-3.5 ${entry.uid === user.uid ? 'bg-blue-600/10' : ''}`}>
+                  <span className={`w-7 text-center font-bold text-sm ${
+                    i === 0 ? 'text-yellow-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-amber-600' : 'text-slate-500'
+                  }`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{entry.displayName || 'Anonymous'}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5 text-yellow-400" />
+                    <span className="text-yellow-400 font-bold text-sm">{(entry.betCoins ?? 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

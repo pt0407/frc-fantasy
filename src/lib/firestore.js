@@ -9,6 +9,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   arrayUnion,
   arrayRemove,
@@ -263,13 +264,16 @@ export async function placeBet(uid, matchKey, alliance, amount, matchDescription
   const userRef = doc(db, 'users', uid);
   const user = await getUserProfile(uid);
   if (!user) throw new Error('User not found');
-  if (user.betCoins < amount) throw new Error('Not enough coins');
+  const isFree = user.betCoins <= 0 || amount === 0;
+  const betAmount = isFree ? 0 : amount;
+  if (!isFree && user.betCoins < betAmount) throw new Error('Not enough coins');
 
   await addDoc(collection(db, 'bets'), {
     uid,
     matchKey,
     alliance,
-    amount,
+    amount: betAmount,
+    isFree: isFree || false,
     matchDescription,
     eventName: eventName || null,
     status: 'pending',
@@ -277,7 +281,7 @@ export async function placeBet(uid, matchKey, alliance, amount, matchDescription
     createdAt: serverTimestamp(),
   });
 
-  await updateDoc(userRef, { betCoins: increment(-amount) });
+  if (!isFree) await updateDoc(userRef, { betCoins: increment(-betAmount) });
 }
 
 export async function claimDailyCoins(uid) {
@@ -298,6 +302,12 @@ export async function claimDailyCoins(uid) {
     lastDailyClaim: serverTimestamp(),
   });
   return 50;
+}
+
+export async function getBetLeaderboard(limitCount = 20) {
+  const q = query(collection(db, 'users'), orderBy('betCoins', 'desc'), limit(limitCount));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
 }
 
 export async function getUserBets(uid) {
@@ -333,10 +343,11 @@ export async function resolvePendingBets(uid) {
       const userRef = doc(db, 'users', uid);
 
       if (winner === 'tie') {
-        await updateDoc(userRef, { betCoins: increment(bet.amount) });
+        if (!bet.isFree) await updateDoc(userRef, { betCoins: increment(bet.amount) });
         await updateDoc(betRef, { status: 'resolved', result: 'tie' });
       } else if (bet.alliance === winner) {
-        await updateDoc(userRef, { betCoins: increment(bet.amount * 2) });
+        const payout = bet.isFree ? 5 : bet.amount * 2;
+        await updateDoc(userRef, { betCoins: increment(payout) });
         await updateDoc(betRef, { status: 'resolved', result: 'win' });
       } else {
         await updateDoc(betRef, { status: 'resolved', result: 'loss' });

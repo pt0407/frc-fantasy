@@ -91,7 +91,6 @@ export async function leaveLeague(leagueId, uid) {
   const league = await getLeague(leagueId);
   if (!league) throw new Error('League not found');
   if (!league.members.includes(uid)) throw new Error('Not a member');
-  if (league.draftStarted) throw new Error('Cannot leave after draft has started');
   const remaining = league.members.filter((m) => m !== uid);
   if (remaining.length === 0) {
     await deleteDoc(doc(db, 'leagues', leagueId));

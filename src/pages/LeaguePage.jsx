@@ -71,11 +71,12 @@ export default function LeaguePage() {
 
   async function handleLeave() {
     if (!league) return;
-    const confirm = window.confirm(
-      league.ownerUid === user?.uid && league.members.length > 1
-        ? 'You are the owner. Leaving will transfer ownership to the next member. Continue?'
-        : 'Leave this league? This cannot be undone.'
-    );
+    const msg = league.draftStarted
+      ? 'The draft has already started. Leaving will abandon your roster. Are you sure?'
+      : league.ownerUid === user?.uid && league.members.length > 1
+      ? 'You are the owner. Leaving will transfer ownership to the next member. Continue?'
+      : 'Leave this league? This cannot be undone.';
+    const confirm = window.confirm(msg);
     if (!confirm) return;
     try {
       const { deleted } = await leaveLeague(id, user.uid);
@@ -183,14 +184,12 @@ export default function LeaguePage() {
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {league.inviteCode}
             </button>
-            {!league.draftStarted && (
-              <button
-                onClick={handleLeave}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-500/20 hover:border-red-500/50 text-red-400 rounded-xl text-sm font-medium transition-all"
-              >
-                <LogOut className="w-4 h-4" /> Leave
-              </button>
-            )}
+            <button
+              onClick={handleLeave}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-500/20 hover:border-red-500/50 text-red-400 rounded-xl text-sm font-medium transition-all"
+            >
+              <LogOut className="w-4 h-4" /> Leave
+            </button>
 
             {isOwner && !league.draftStarted && (
               <button

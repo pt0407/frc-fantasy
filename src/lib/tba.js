@@ -29,17 +29,19 @@ export async function getEventRankings(eventKey) {
   return tbaFetch(`/event/${eventKey}/rankings`);
 }
 
+export async function getEventAwards(eventKey) {
+  return tbaFetch(`/event/${eventKey}/awards`);
+}
+
 export async function getTeam(teamKey) {
   return tbaFetch(`/team/${teamKey}/simple`);
 }
 
 export async function getUpcomingEvents(year = new Date().getFullYear()) {
   const events = await getEvents(year);
-  const now = new Date();
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - 7);
+  const todayStr = new Date().toLocaleDateString('en-CA');
   return events
-    .filter((e) => new Date(e.end_date) >= cutoff)
+    .filter((e) => e.end_date >= todayStr)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 }
 
@@ -69,10 +71,10 @@ export function computeFantasyScore(teamKey, matches, awards = []) {
 
     if (!myAlliance || !oppAlliance) continue;
 
-    const myScore = myAlliance.score || 0;
-    const oppScore = oppAlliance.score || 0;
+    const myScore = myAlliance.score ?? -1;
+    const oppScore = oppAlliance.score ?? -1;
 
-    if (myScore < 0) continue;
+    if (myScore < 0 || oppScore < 0) continue;
 
     score += Math.floor(myScore / 10);
 
@@ -82,7 +84,11 @@ export function computeFantasyScore(teamKey, matches, awards = []) {
     if (scoreBreakdown) {
       score += (scoreBreakdown.rp || 0) * 3;
 
-      if (scoreBreakdown.autoPoints) score += Math.floor(scoreBreakdown.autoPoints / 5);
+      const autoPoints = scoreBreakdown.autoPoints
+        ?? scoreBreakdown.autoCoralPoints
+        ?? scoreBreakdown.autoMobilityPoints
+        ?? 0;
+      if (autoPoints > 0) score += Math.floor(autoPoints / 5);
     }
   }
 

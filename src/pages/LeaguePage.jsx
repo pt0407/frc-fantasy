@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder, leaveLeague, updateLeagueSettings } from '../lib/firestore';
-import { getEventMatches, computeFantasyScore } from '../lib/tba';
+import { getEventMatches, getEventAwards, computeFantasyScore } from '../lib/tba';
 import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw, ArrowUp, ArrowDown, LogOut, Settings } from 'lucide-react';
 
 export default function LeaguePage() {
@@ -27,20 +27,27 @@ export default function LeaguePage() {
     const rosters = leagueData.rosters || {};
     if (Object.keys(rosters).length === 0) return;
     try {
-      const matches = await getEventMatches(leagueData.eventKey);
-      const allCompleted = matches.filter((m) => m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0);
+      const [matches, awards] = await Promise.all([
+        getEventMatches(leagueData.eventKey),
+        getEventAwards(leagueData.eventKey).catch(() => []),
+      ]);
+      const allCompleted = matches.filter((m) => {
+        const rs = m.alliances?.red?.score ?? -1;
+        const bs = m.alliances?.blue?.score ?? -1;
+        return rs >= 0 && bs >= 0;
+      });
       const newScores = {};
       for (const [uid, teamKeys] of Object.entries(rosters)) {
         const joinedSecs = leagueData.memberJoinedAt?.[uid]?.seconds
           ?? leagueData.createdAt?.seconds
-          ?? 0;
-        const eligible = allCompleted.filter((m) => {
-          const matchTime = m.actual_time || m.post_result_time || 0;
-          return matchTime === 0 || matchTime >= joinedSecs;
+          ?? null;
+        const eligible = joinedSecs === null ? allCompleted : allCompleted.filter((m) => {
+          const matchTime = m.actual_time || m.post_result_time || null;
+          return matchTime !== null && matchTime >= joinedSecs;
         });
         let total = 0;
         for (const teamKey of teamKeys) {
-          total += computeFantasyScore(teamKey, eligible);
+          total += computeFantasyScore(teamKey, eligible, awards);
         }
         newScores[uid] = total;
       }

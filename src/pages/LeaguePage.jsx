@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder } from '../lib/firestore';
+import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder, leaveLeague } from '../lib/firestore';
 import { getEventMatches, computeFantasyScore } from '../lib/tba';
-import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw, ArrowUp, ArrowDown, LogOut } from 'lucide-react';
 
 export default function LeaguePage() {
   const { id } = useParams();
@@ -62,6 +62,22 @@ export default function LeaguePage() {
     setSyncing(true);
     await syncScores(league);
     setSyncing(false);
+  }
+
+  async function handleLeave() {
+    if (!league) return;
+    const confirm = window.confirm(
+      league.ownerUid === user?.uid && league.members.length > 1
+        ? 'You are the owner. Leaving will transfer ownership to the next member. Continue?'
+        : 'Leave this league? This cannot be undone.'
+    );
+    if (!confirm) return;
+    try {
+      const { deleted } = await leaveLeague(id, user.uid);
+      navigate('/leagues');
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   function copyCode() {
@@ -162,6 +178,14 @@ export default function LeaguePage() {
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {league.inviteCode}
             </button>
+            {!league.draftStarted && (
+              <button
+                onClick={handleLeave}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-500/20 hover:border-red-500/50 text-red-400 rounded-xl text-sm font-medium transition-all"
+              >
+                <LogOut className="w-4 h-4" /> Leave
+              </button>
+            )}
 
             {isOwner && !league.draftStarted && (
               <button

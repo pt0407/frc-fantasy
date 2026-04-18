@@ -11,6 +11,9 @@ import {
   orderBy,
   serverTimestamp,
   arrayUnion,
+  arrayRemove,
+  deleteDoc,
+  deleteField,
   increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -82,6 +85,29 @@ export async function joinLeague(code, uid, displayName) {
     [`scores.${uid}`]: 0,
   });
   return leagueDoc.id;
+}
+
+export async function leaveLeague(leagueId, uid) {
+  const league = await getLeague(leagueId);
+  if (!league) throw new Error('League not found');
+  if (!league.members.includes(uid)) throw new Error('Not a member');
+  if (league.draftStarted) throw new Error('Cannot leave after draft has started');
+  const remaining = league.members.filter((m) => m !== uid);
+  if (remaining.length === 0) {
+    await deleteDoc(doc(db, 'leagues', leagueId));
+    return { deleted: true };
+  }
+  const updates = {
+    members: arrayRemove(uid),
+    [`memberNames.${uid}`]: deleteField(),
+    [`scores.${uid}`]: deleteField(),
+  };
+  if (league.ownerUid === uid) {
+    updates.ownerUid = remaining[0];
+    updates.ownerName = league.memberNames?.[remaining[0]] || '';
+  }
+  await updateDoc(doc(db, 'leagues', leagueId), updates);
+  return { deleted: false };
 }
 
 export async function getLeague(leagueId) {

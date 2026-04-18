@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getLeague, makeDraftPick, nominateTeam, submitAuctionBid, revealAuctionBids, clearAuctionNomination } from '../lib/firestore';
 import { getEventTeams } from '../lib/tba';
-import { Search, Zap, Clock, CheckCircle2, Gavel, Eye, EyeOff } from 'lucide-react';
+import { Search, Zap, Clock, CheckCircle2, Gavel, Eye, EyeOff, X } from 'lucide-react';
 
 function getCurrentPicker(league) {
   if (!league?.draftOrder?.length) return null;
@@ -24,6 +24,7 @@ export default function DraftPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [picking, setPicking] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [bidAmount, setBidAmount] = useState(0);
   const [nominating, setNominating] = useState(false);
   const [bidSubmitted, setBidSubmitted] = useState(false);
@@ -54,6 +55,7 @@ export default function DraftPage() {
     setPicking(true);
     try {
       await makeDraftPick(id, user.uid, `frc${team.team_number}`, team.nickname || `Team ${team.team_number}`);
+      setSelectedTeam(null);
       await fetchLeague();
     } catch (e) {
       alert(e.message);
@@ -222,21 +224,29 @@ export default function DraftPage() {
                 filteredTeams.map((team) => {
                   const key = `frc${team.team_number}`;
                   const canAct = !league.draftComplete && (
-                    draftType === 'auction' ? (!nom && !league.draftComplete) :
-                    isMyTurn
+                    draftType === 'auction' ? (!nom && !league.draftComplete) : isMyTurn
                   );
-                  const actionLabel = draftType === 'auction' ? 'Nominate' : 'Pick';
+                  const isSelected = selectedTeam?.team_number === team.team_number;
                   return (
                     <button key={key}
-                      onClick={() => draftType === 'auction'
-                        ? nominateTeam(id, user.uid, key, team.nickname||`Team ${team.team_number}`).then(fetchLeague).catch(e=>alert(e.message))
-                        : handlePick(team)}
-                      disabled={!canAct || picking}
+                      onClick={() => {
+                        if (!canAct || picking) return;
+                        if (draftType === 'auction') {
+                          nominateTeam(id, user.uid, key, team.nickname||`Team ${team.team_number}`).then(fetchLeague).catch(e=>alert(e.message));
+                        } else {
+                          setSelectedTeam(isSelected ? null : team);
+                        }
+                      }}
+                      disabled={(!canAct && !isSelected) || picking}
                       className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all border ${
-                        canAct ? 'bg-[#0f1117] hover:bg-blue-600/10 hover:border-blue-500/30 border-transparent cursor-pointer' : 'bg-[#0f1117] border-transparent cursor-not-allowed opacity-50'
+                        isSelected
+                          ? 'bg-blue-600/20 border-blue-500/50 ring-1 ring-blue-500/30'
+                          : canAct
+                          ? 'bg-[#0f1117] hover:bg-blue-600/10 hover:border-blue-500/30 border-transparent cursor-pointer'
+                          : 'bg-[#0f1117] border-transparent cursor-not-allowed opacity-50'
                       }`}>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-blue-600/40' : 'bg-blue-600/20'}`}>
                           <span className="text-blue-400 text-xs font-bold">{team.team_number}</span>
                         </div>
                         <div>
@@ -244,7 +254,8 @@ export default function DraftPage() {
                           <p className="text-slate-500 text-xs">{team.city ? `${team.city}, ${team.state_prov}` : ''}</p>
                         </div>
                       </div>
-                      {canAct && <span className="text-blue-400 text-xs font-medium px-2 py-1 bg-blue-600/10 rounded-lg border border-blue-500/20">{actionLabel}</span>}
+                      {isSelected && <span className="text-blue-300 text-xs font-semibold">Selected</span>}
+                      {!isSelected && canAct && <span className="text-slate-500 text-xs">Click to select</span>}
                     </button>
                   );
                 })
@@ -253,6 +264,37 @@ export default function DraftPage() {
           ) : (
             <div className="text-center py-12">
               <p className="text-slate-400 text-sm">No event linked — ask the owner to link an event.</p>
+            </div>
+          )}
+
+          {selectedTeam && (
+            <div className="mt-4 flex items-center justify-between bg-blue-600/10 border border-blue-500/30 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-blue-600/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-blue-300 text-xs font-bold">{selectedTeam.team_number}</span>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{selectedTeam.nickname || `Team ${selectedTeam.team_number}`}</p>
+                  <p className="text-slate-400 text-xs">{selectedTeam.city ? `${selectedTeam.city}, ${selectedTeam.state_prov}` : 'Selected'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedTeam(null)}
+                  className="p-2 rounded-lg bg-[#0f1117] border border-[#2a2d3a] hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-all"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handlePick(selectedTeam)}
+                  disabled={picking}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
+                >
+                  <Zap className="w-4 h-4" />
+                  {picking ? 'Picking...' : 'Finalize Pick'}
+                </button>
+              </div>
             </div>
           )}
         </div>

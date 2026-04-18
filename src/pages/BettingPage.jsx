@@ -26,9 +26,7 @@ function BetModal({ match, onClose, onBet, coins }) {
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <h2 className="text-white font-bold text-lg mb-1">Place Bet</h2>
-        <p className="text-slate-400 text-sm mb-5">
-          {match.comp_level === 'qm' ? `Qual ${match.match_number}` : `${match.comp_level?.toUpperCase()} Match ${match.match_number}`}
-        </p>
+        <p className="text-slate-400 text-sm mb-5">{matchLabel(match)}</p>
 
         <div className="flex gap-2 mb-5">
           <button
@@ -88,6 +86,16 @@ function BetModal({ match, onClose, onBet, coins }) {
   );
 }
 
+function matchLabel(match, short = false) {
+  const { comp_level: cl, set_number: s, match_number: m } = match;
+  if (cl === 'qm') return short ? `Q${m}` : `Qualification ${m}`;
+  if (cl === 'ef') return short ? `EF${s}M${m}` : `Octofinal ${s} Match ${m}`;
+  if (cl === 'qf') return short ? `QF${s}M${m}` : `Quarterfinal ${s} Match ${m}`;
+  if (cl === 'sf') return short ? `SF${s}M${m}` : `Semifinal ${s} Match ${m}`;
+  if (cl === 'f')  return short ? `F${m}` : `Final Match ${m}`;
+  return short ? `${cl?.toUpperCase()} ${m}` : `${cl?.toUpperCase()} Match ${m}`;
+}
+
 export default function BettingPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -145,9 +153,7 @@ export default function BettingPage() {
   }, [selectedEvent]);
 
   async function handleBet(match, alliance, amount) {
-    const desc = match.comp_level === 'qm'
-      ? `Qual ${match.match_number} — ${alliance.toUpperCase()} Alliance`
-      : `${match.comp_level?.toUpperCase()} Match ${match.match_number} — ${alliance.toUpperCase()} Alliance`;
+    const desc = `${matchLabel(match)} — ${alliance === 'red' ? 'Red' : 'Blue'} Alliance`;
     await placeBet(user.uid, match.key, alliance, amount, desc);
     await refreshBets();
   }
@@ -217,7 +223,7 @@ export default function BettingPage() {
                   <div key={match.key} className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-slate-400 text-sm font-medium">
-                        {match.comp_level === 'qm' ? `Qualification ${match.match_number}` : `${match.comp_level?.toUpperCase()} Match ${match.match_number}`}
+                        {matchLabel(match)}
                       </span>
                       {hasBet && (
                         <span className="text-xs bg-green-600/20 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">Bet placed</span>

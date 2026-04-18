@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, getUserLeagues, getUserBets, claimDailyCoins } from '../lib/firestore';
-import { User, Coins, Trophy, Users, TrendingUp, TrendingDown, Clock, Gift, Star } from 'lucide-react';
+import { User, Coins, Trophy, Users, TrendingUp, TrendingDown, Clock, Gift, Star, Pencil, Check, X } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -11,6 +12,22 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [claimMsg, setClaimMsg] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  async function handleSaveName() {
+    if (!nameInput.trim() || !user) return;
+    setSavingName(true);
+    try {
+      await updateProfile(user, { displayName: nameInput.trim() });
+      setEditingName(false);
+    } catch (e) {
+      alert('Failed to update name: ' + e.message);
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -95,7 +112,24 @@ export default function ProfilePage() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-white truncate">{user?.displayName || 'Anonymous'}</h1>
+            {editingName ? (
+              <div className="flex items-center gap-2 mb-1">
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                  className="bg-[#0f1117] border border-blue-500/50 rounded-lg px-3 py-1.5 text-white text-lg font-bold focus:outline-none w-48"
+                />
+                <button onClick={handleSaveName} disabled={savingName} className="text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                <button onClick={() => setEditingName(false)} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-bold text-white truncate">{user?.displayName || 'Anonymous'}</h1>
+                <button onClick={() => { setNameInput(user?.displayName || ''); setEditingName(true); }} className="text-slate-500 hover:text-slate-300"><Pencil className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
             <p className="text-slate-400 text-sm mt-0.5">{user?.email}</p>
             <div className="flex items-center gap-3 mt-2">
               <span className="flex items-center gap-1.5 text-sm text-slate-400">

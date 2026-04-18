@@ -250,7 +250,7 @@ export async function makeDraftPick(leagueId, uid, teamKey, teamName) {
   });
 }
 
-export async function placeBet(uid, matchKey, alliance, amount, matchDescription) {
+export async function placeBet(uid, matchKey, alliance, amount, matchDescription, eventName) {
   const userRef = doc(db, 'users', uid);
   const user = await getUserProfile(uid);
   if (!user) throw new Error('User not found');
@@ -262,6 +262,7 @@ export async function placeBet(uid, matchKey, alliance, amount, matchDescription
     alliance,
     amount,
     matchDescription,
+    eventName: eventName || null,
     status: 'pending',
     result: null,
     createdAt: serverTimestamp(),

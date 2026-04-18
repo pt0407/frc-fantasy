@@ -86,14 +86,34 @@ function BetModal({ match, onClose, onBet, coins }) {
   );
 }
 
-function matchLabel(match, short = false) {
+const DE_BRACKET = {
+  1: 'Upper Bracket — Round 1, Match 1',
+  2: 'Upper Bracket — Round 1, Match 2',
+  3: 'Upper Bracket — Round 1, Match 3',
+  4: 'Upper Bracket — Round 1, Match 4',
+  5: 'Lower Bracket — Round 1, Match 1',
+  6: 'Lower Bracket — Round 1, Match 2',
+  7: 'Upper Bracket — Round 2, Match 1',
+  8: 'Upper Bracket — Round 2, Match 2',
+  9: 'Lower Bracket — Round 2, Match 1',
+  10: 'Lower Bracket — Round 2, Match 2',
+  11: 'Upper Bracket Final',
+  12: 'Lower Bracket — Round 3',
+  13: 'Bracket Final',
+};
+
+function matchLabel(match) {
   const { comp_level: cl, set_number: s, match_number: m } = match;
-  if (cl === 'qm') return short ? `Q${m}` : `Qualification ${m}`;
-  if (cl === 'ef') return short ? `EF${s}M${m}` : `Octofinal ${s} Match ${m}`;
-  if (cl === 'qf') return short ? `QF${s}M${m}` : `Quarterfinal ${s} Match ${m}`;
-  if (cl === 'sf') return short ? `SF${s}M${m}` : `Semifinal ${s} Match ${m}`;
-  if (cl === 'f')  return short ? `F${m}` : `Final Match ${m}`;
-  return short ? `${cl?.toUpperCase()} ${m}` : `${cl?.toUpperCase()} Match ${m}`;
+  if (cl === 'qm') return `Qualification ${m}`;
+  if (cl === 'ef') return `Octofinal ${s}, Match ${m}`;
+  if (cl === 'qf') return `Quarterfinal ${s}, Match ${m}`;
+  if (cl === 'sf') {
+    const bracket = DE_BRACKET[s];
+    if (bracket) return m > 1 ? `${bracket} (Rematch ${m})` : bracket;
+    return `Semifinal ${s}, Match ${m}`;
+  }
+  if (cl === 'f') return `Finals — Match ${m}`;
+  return `${cl?.toUpperCase()} Match ${m}`;
 }
 
 export default function BettingPage() {
@@ -152,9 +172,11 @@ export default function BettingPage() {
       .catch(() => setLoadingMatches(false));
   }, [selectedEvent]);
 
+  const selectedEventName = events.find((e) => e.key === selectedEvent)?.name || selectedEvent;
+
   async function handleBet(match, alliance, amount) {
     const desc = `${matchLabel(match)} — ${alliance === 'red' ? 'Red' : 'Blue'} Alliance`;
-    await placeBet(user.uid, match.key, alliance, amount, desc);
+    await placeBet(user.uid, match.key, alliance, amount, desc, selectedEventName);
     await refreshBets();
   }
 
@@ -285,8 +307,9 @@ export default function BettingPage() {
               <div key={bet.id} className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-5 flex items-center justify-between">
                 <div>
                   <p className="text-white text-sm font-medium">{bet.matchDescription}</p>
-                  <p className="text-slate-500 text-xs mt-1">
-                    Bet {bet.amount} coins on <span className={bet.alliance === 'red' ? 'text-red-400' : 'text-blue-400'}>{bet.alliance.toUpperCase()} Alliance</span>
+                  <p className="text-slate-400 text-xs mt-0.5">{bet.eventName || bet.matchKey?.split('_')[0]}</p>
+                  <p className="text-slate-500 text-xs mt-0.5">
+                    {bet.amount} coins on <span className={bet.alliance === 'red' ? 'text-red-400' : 'text-blue-400'}>{bet.alliance === 'red' ? 'Red' : 'Blue'} Alliance</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

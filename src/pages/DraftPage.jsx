@@ -87,7 +87,7 @@ export default function DraftPage() {
     ? !league.auctionNomination
     : currentPicker === user?.uid;
 
-  const totalPicks = league.rosterSize * (league.draftOrder?.length || league.members.length);
+  const totalPicks = league.rosterSize * (draftType === 'free_pick' ? league.members.length : (league.draftOrder?.length || league.members.length));
   const pickedSoFar = allPicked.length;
   const progress = Math.min(pickedSoFar / totalPicks, 1);
   const currentRound = league.draftOrder?.length

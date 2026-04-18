@@ -23,7 +23,7 @@ export default function LeaguePage() {
   const [savingSettings, setSavingSettings] = useState(false);
 
   const syncScores = useCallback(async (leagueData) => {
-    if (!leagueData?.eventKey || !leagueData?.draftComplete) return;
+    if (!leagueData?.eventKey || !leagueData?.draftStarted) return;
     const rosters = leagueData.rosters || {};
     if (Object.keys(rosters).length === 0) return;
     try {
@@ -65,13 +65,13 @@ export default function LeaguePage() {
       const l = await getLeague(id);
       setLeague(l);
       setLoading(false);
-      if (l?.draftComplete && l?.eventKey) syncScores(l);
+      if (l?.draftStarted && l?.eventKey) syncScores(l);
     }
     init();
     const pollInterval = setInterval(() => getLeague(id).then(setLeague), 5000);
     const syncInterval = setInterval(async () => {
       const l = await getLeague(id);
-      if (l?.draftComplete && l?.eventKey) syncScores(l);
+      if (l?.draftStarted && l?.eventKey) syncScores(l);
     }, 5 * 60 * 1000);
     return () => { clearInterval(pollInterval); clearInterval(syncInterval); };
   }, [id, syncScores]);
@@ -257,7 +257,7 @@ export default function LeaguePage() {
           </div>
 
           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-            {league.draftComplete && league.eventKey && (
+            {league.draftStarted && league.eventKey && (
               <button
                 onClick={handleManualSync}
                 disabled={syncing}

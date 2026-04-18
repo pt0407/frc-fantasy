@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder, leaveLeague } from '../lib/firestore';
+import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder, leaveLeague, updateLeagueSettings } from '../lib/firestore';
 import { getEventMatches, computeFantasyScore } from '../lib/tba';
 import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw, ArrowUp, ArrowDown, LogOut } from 'lucide-react';
 
@@ -16,6 +16,8 @@ export default function LeaguePage() {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [ownerOrder, setOwnerOrder] = useState([]);
+  const [editingLimit, setEditingLimit] = useState(false);
+  const [newLimit, setNewLimit] = useState('');
 
   const syncScores = useCallback(async (leagueData) => {
     if (!leagueData?.eventKey || !leagueData?.draftComplete) return;
@@ -86,6 +88,20 @@ export default function LeaguePage() {
     } catch (e) {
       alert(e.message);
     }
+  }
+
+  async function handleSaveLimit() {
+    const val = parseInt(newLimit);
+    if (!val || val < league.members.length) {
+      alert(`Must be at least ${league.members.length} (current member count).`);
+      return;
+    }
+    try {
+      await updateLeagueSettings(id, { maxMembers: val });
+      const updated = await getLeague(id);
+      setLeague(updated);
+      setEditingLimit(false);
+    } catch (e) { alert(e.message); }
   }
 
   function copyCode() {
@@ -159,7 +175,33 @@ export default function LeaguePage() {
               {isOwner && <span className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Owner</span>}
             </div>
             {league.description && <p className="text-slate-400 text-sm">{league.description}</p>}
-            <p className="text-slate-500 text-sm mt-1">{league.members.length}/{league.maxMembers || 100} members · {league.eventName || 'No event linked'} · Roster: {league.rosterSize} teams</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-slate-500 text-sm">
+                {league.members.length}/
+                {editingLimit ? (
+                  <span className="inline-flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={newLimit}
+                      onChange={(e) => setNewLimit(e.target.value)}
+                      className="w-14 bg-[#0f1117] border border-blue-500 rounded-lg px-2 py-0.5 text-white text-sm focus:outline-none"
+                      autoFocus
+                      min={league.members.length}
+                    />
+                    <button onClick={handleSaveLimit} className="text-xs text-green-400 hover:text-green-300 font-medium">Save</button>
+                    <button onClick={() => setEditingLimit(false)} className="text-xs text-slate-500 hover:text-slate-300">Cancel</button>
+                  </span>
+                ) : (
+                  <span>
+                    {league.maxMembers || 100}
+                    {isOwner && (
+                      <button onClick={() => { setNewLimit(String(league.maxMembers || 100)); setEditingLimit(true); }} className="ml-1.5 text-xs text-slate-600 hover:text-blue-400 transition-colors">[edit]</button>
+                    )}
+                  </span>
+                )}
+                {' '}members · {league.eventName || 'No event linked'} · Roster: {league.rosterSize} teams
+              </p>
+            </div>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {[league.draftType, league.draftMode, league.draftVisibility].filter(Boolean).map((tag) => (
                 <span key={tag} className="text-xs bg-[#0f1117] border border-[#2a2d3a] text-slate-400 px-2 py-0.5 rounded-full capitalize">{tag.replace('_',' ')}</span>

@@ -113,6 +113,10 @@ export async function leaveLeague(leagueId, uid) {
   return { deleted: false };
 }
 
+export async function updateLeagueSettings(leagueId, settings) {
+  await updateDoc(doc(db, 'leagues', leagueId), settings);
+}
+
 export async function getLeague(leagueId) {
   const snap = await getDoc(doc(db, 'leagues', leagueId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

@@ -58,6 +58,7 @@ export async function createLeague(ownerUid, ownerName, leagueData) {
     eventKey: leagueData.eventKey || '',
     eventName: leagueData.eventName || '',
     openJoin: leagueData.openJoin || false,
+    uniqueTeams: leagueData.uniqueTeams !== false,
     auctionBudgets: {},
     auctionNomination: null,
     members: [ownerUid],
@@ -202,10 +203,11 @@ export async function makeDraftPick(leagueId, uid, teamKey, teamName) {
   const league = await getLeague(leagueId);
   if (!league) throw new Error('League not found');
 
-  const allPicked = Object.values(league.rosters || {}).flat();
-  if (allPicked.includes(teamKey)) throw new Error('Team already drafted');
-
   const draftType = league.draftType || 'snake';
+  const uniqueTeams = league.uniqueTeams !== false;
+
+  const allPicked = Object.values(league.rosters || {}).flat();
+  if (uniqueTeams && allPicked.includes(teamKey)) throw new Error('Team already drafted');
 
   if (draftType === 'free_pick') {
     const leagueRef = doc(db, 'leagues', leagueId);
@@ -214,10 +216,12 @@ export async function makeDraftPick(leagueId, uid, teamKey, teamName) {
       if (!snap.exists()) throw new Error('League not found');
       const data = snap.data();
       const allPicked = Object.values(data.rosters || {}).flat();
-      if (allPicked.includes(teamKey)) throw new Error('Team already taken — someone else picked it first!');
+      const isUnique = data.uniqueTeams !== false;
+      if (isUnique && allPicked.includes(teamKey)) throw new Error('Team already taken — someone else picked it first!');
       const myRoster = data.rosters?.[uid] || [];
+      if (myRoster.includes(teamKey)) throw new Error('You already picked this team');
       if (myRoster.length >= data.rosterSize) throw new Error('Your roster is full');
-      const newTotal = allPicked.length + 1;
+      const newTotal = isUnique ? allPicked.length + 1 : Object.values(data.rosters || {}).reduce((s,r)=>s+r.length,0) + 1;
       const maxPicks = data.rosterSize * data.members.length;
       tx.update(leagueRef, {
         [`rosters.${uid}`]: arrayUnion(teamKey),

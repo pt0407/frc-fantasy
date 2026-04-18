@@ -42,6 +42,7 @@ export default function LeaguesPage() {
     auctionBudget: 200,
     draftTimerSecs: 60,
     openJoin: false,
+    uniqueTeams: true,
   });
   const [manualEventKey, setManualEventKey] = useState('');
   const [eventSearch, setEventSearch] = useState('');
@@ -333,6 +334,19 @@ export default function LeaguesPage() {
                 <p className="text-blue-300 text-xs">Free Pick: everyone picks their own roster anytime after draft starts. Teams are first-come-first-served — no duplicate picks across the league.</p>
               </div>
             )}
+
+            <div
+              onClick={() => setCreateForm({ ...createForm, uniqueTeams: !createForm.uniqueTeams })}
+              className="flex items-center justify-between bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 cursor-pointer select-none hover:border-slate-500 transition-all"
+            >
+              <div>
+                <p className="text-white text-sm font-medium">Unique Teams Only</p>
+                <p className="text-slate-500 text-xs mt-0.5">When on, each team can only be picked by one person. Turn off to let multiple people pick the same team.</p>
+              </div>
+              <div className={`w-10 h-6 rounded-full flex-shrink-0 ml-4 flex items-center px-1 transition-all ${createForm.uniqueTeams ? 'bg-blue-600' : 'bg-[#2a2d3a]'}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-all ${createForm.uniqueTeams ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
 
             <div
               onClick={() => setCreateForm({ ...createForm, openJoin: !createForm.openJoin })}

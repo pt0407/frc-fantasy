@@ -102,9 +102,11 @@ export default function DraftPage() {
     ? { [user?.uid]: myRoster }
     : league.rosters || {};
 
+  const uniqueTeams = league.uniqueTeams !== false;
   const filteredTeams = teams.filter((t) => {
     const key = `frc${t.team_number}`;
-    if (allPicked.includes(key)) return false;
+    if (uniqueTeams && allPicked.includes(key)) return false;
+    if (!uniqueTeams && myRoster.includes(key)) return false;
     if (!search) return true;
     return (
       String(t.team_number).includes(search) ||

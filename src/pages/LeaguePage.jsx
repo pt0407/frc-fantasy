@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getLeague, startDraft, updateLeagueScores } from '../lib/firestore';
+import { getLeague, startDraft, updateLeagueScores, setOwnerDraftOrder } from '../lib/firestore';
 import { getEventMatches, computeFantasyScore } from '../lib/tba';
-import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw } from 'lucide-react';
+import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function LeaguePage() {
   const { id } = useParams();
@@ -15,6 +15,7 @@ export default function LeaguePage() {
   const [starting, setStarting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [ownerOrder, setOwnerOrder] = useState([]);
 
   const syncScores = useCallback(async (leagueData) => {
     if (!leagueData?.eventKey || !leagueData?.draftComplete) return;
@@ -69,12 +70,36 @@ export default function LeaguePage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  useEffect(() => {
+    if (league && league.draftOrderType === 'owner_set' && ownerOrder.length === 0) {
+      setOwnerOrder(league.pendingDraftOrder?.length ? league.pendingDraftOrder : [...league.members]);
+    }
+  }, [league]);
+
+  function moveOrder(idx, dir) {
+    const next = [...ownerOrder];
+    const swap = idx + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    setOwnerOrder(next);
+    setOwnerDraftOrder(id, next);
+  }
+
   async function handleStartDraft() {
     if (!league) return;
     setStarting(true);
-    const shuffled = [...league.members].sort(() => Math.random() - 0.5);
+    let order;
+    if (league.draftType === 'free_pick' || league.draftType === 'auction') {
+      order = [...league.members];
+    } else if (league.draftOrderType === 'random') {
+      order = [...league.members].sort(() => Math.random() - 0.5);
+    } else if (league.draftOrderType === 'join_order') {
+      order = [...league.members];
+    } else {
+      order = ownerOrder.length ? ownerOrder : [...league.members];
+    }
     try {
-      await startDraft(id, shuffled);
+      await startDraft(id, order, league);
       navigate(`/leagues/${id}/draft`);
     } catch (e) {
       alert(e.message);
@@ -111,7 +136,12 @@ export default function LeaguePage() {
             </div>
             {league.description && <p className="text-slate-400 text-sm">{league.description}</p>}
             <p className="text-slate-500 text-sm mt-1">{league.members.length}/{league.maxMembers || 100} members · {league.eventName || 'No event linked'} · Roster: {league.rosterSize} teams</p>
-            {lastSync && <p className="text-slate-600 text-xs mt-0.5">Scores last synced: {lastSync.toLocaleTimeString()}</p>}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {[league.draftType, league.draftMode, league.draftVisibility].filter(Boolean).map((tag) => (
+                <span key={tag} className="text-xs bg-[#0f1117] border border-[#2a2d3a] text-slate-400 px-2 py-0.5 rounded-full capitalize">{tag.replace('_',' ')}</span>
+              ))}
+            </div>
+            {lastSync && <p className="text-slate-600 text-xs mt-1">Scores last synced: {lastSync.toLocaleTimeString()}</p>}
           </div>
 
           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
@@ -155,6 +185,25 @@ export default function LeaguePage() {
           </div>
         </div>
       </div>
+
+      {isOwner && league.draftOrderType === 'owner_set' && !league.draftStarted && ownerOrder.length > 0 && (
+        <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
+          <h2 className="text-white font-semibold mb-1">Set Draft Order</h2>
+          <p className="text-slate-400 text-xs mb-4">Drag with arrows to set who picks first.</p>
+          <div className="space-y-2">
+            {ownerOrder.map((uid, idx) => (
+              <div key={uid} className="flex items-center gap-3 bg-[#0f1117] rounded-xl px-4 py-2.5">
+                <span className="text-slate-500 text-sm w-5">{idx + 1}</span>
+                <span className="text-white text-sm flex-1">{league.memberNames?.[uid] || uid}{uid === user?.uid ? ' (you)' : ''}</span>
+                <div className="flex gap-1">
+                  <button onClick={() => moveOrder(idx, -1)} disabled={idx === 0} className="p-1 text-slate-500 hover:text-white disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => moveOrder(idx, 1)} disabled={idx === ownerOrder.length - 1} className="p-1 text-slate-500 hover:text-white disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">

@@ -31,7 +31,17 @@ export default function LeaguesPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [events, setEvents] = useState([]);
 
-  const [createForm, setCreateForm] = useState({ name: '', description: '', rosterSize: 8, maxMembers: 20, eventKey: '', eventName: '', draftTimerSecs: 60 });
+  const [createForm, setCreateForm] = useState({
+    name: '', description: '', rosterSize: 8, maxMembers: 20, eventKey: '', eventName: '',
+    draftType: 'snake',
+    draftOrderType: 'random',
+    autodraft: 'skip',
+    draftMode: 'live',
+    slowDraftHours: 24,
+    draftVisibility: 'public',
+    auctionBudget: 200,
+    draftTimerSecs: 60,
+  });
   const [manualEventKey, setManualEventKey] = useState('');
   const [eventSearch, setEventSearch] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -204,20 +214,124 @@ export default function LeaguesPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Draft Pick Timer</label>
-              <select
-                value={createForm.draftTimerSecs}
-                onChange={(e) => setCreateForm({ ...createForm, draftTimerSecs: Number(e.target.value) })}
-                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option value={0}>No timer</option>
-                <option value={30}>30 seconds</option>
-                <option value={60}>1 minute</option>
-                <option value={120}>2 minutes</option>
-                <option value={300}>5 minutes</option>
-              </select>
+            <div className="border-t border-[#2a2d3a] pt-3">
+              <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Draft Settings</p>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Draft Type</label>
+                <select
+                  value={createForm.draftType}
+                  onChange={(e) => setCreateForm({ ...createForm, draftType: e.target.value })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="snake">Snake Draft</option>
+                  <option value="linear">Linear Draft</option>
+                  <option value="free_pick">Free Pick</option>
+                  <option value="auction">Auction (Sealed Bids)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Draft Order</label>
+                <select
+                  value={createForm.draftOrderType}
+                  disabled={createForm.draftType === 'free_pick' || createForm.draftType === 'auction'}
+                  onChange={(e) => setCreateForm({ ...createForm, draftOrderType: e.target.value })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                >
+                  <option value="random">Random Shuffle</option>
+                  <option value="join_order">Join Order</option>
+                  <option value="owner_set">Owner Sets Order</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Draft Mode</label>
+                <select
+                  value={createForm.draftMode}
+                  onChange={(e) => setCreateForm({ ...createForm, draftMode: e.target.value })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="live">Live (all online)</option>
+                  <option value="slow">Slow Draft (async)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  {createForm.draftMode === 'slow' ? 'Hours per Pick' : 'Pick Timer'}
+                </label>
+                {createForm.draftMode === 'slow' ? (
+                  <select
+                    value={createForm.slowDraftHours}
+                    onChange={(e) => setCreateForm({ ...createForm, slowDraftHours: Number(e.target.value) })}
+                    className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                  >
+                    {[2, 4, 8, 12, 24, 48].map((h) => <option key={h} value={h}>{h}h per pick</option>)}
+                  </select>
+                ) : (
+                  <select
+                    value={createForm.draftTimerSecs}
+                    onChange={(e) => setCreateForm({ ...createForm, draftTimerSecs: Number(e.target.value) })}
+                    className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                  >
+                    <option value={0}>No timer</option>
+                    <option value={30}>30 seconds</option>
+                    <option value={60}>1 minute</option>
+                    <option value={120}>2 minutes</option>
+                    <option value={300}>5 minutes</option>
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">On Timer Expiry</label>
+                <select
+                  value={createForm.autodraft}
+                  disabled={createForm.draftType === 'free_pick'}
+                  onChange={(e) => setCreateForm({ ...createForm, autodraft: e.target.value })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                >
+                  <option value="skip">Skip pick</option>
+                  <option value="auto_pick">Auto-pick next team</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Pick Visibility</label>
+                <select
+                  value={createForm.draftVisibility}
+                  disabled={createForm.draftType === 'auction'}
+                  onChange={(e) => setCreateForm({ ...createForm, draftVisibility: e.target.value })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                >
+                  <option value="public">Public (live)</option>
+                  <option value="hidden">Hidden per round</option>
+                </select>
+              </div>
+            </div>
+
+            {createForm.draftType === 'auction' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Auction Budget per Person</label>
+                <select
+                  value={createForm.auctionBudget}
+                  onChange={(e) => setCreateForm({ ...createForm, auctionBudget: Number(e.target.value) })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  {[100, 150, 200, 300, 500].map((b) => <option key={b} value={b}>{b} coins</option>)}
+                </select>
+              </div>
+            )}
+
+            {createForm.draftType === 'free_pick' && (
+              <div className="bg-blue-600/10 border border-blue-500/20 rounded-xl px-4 py-3">
+                <p className="text-blue-300 text-xs">Free Pick: everyone picks their own roster anytime after draft starts. Teams are first-come-first-served — no duplicate picks across the league.</p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">Link to FRC Event</label>

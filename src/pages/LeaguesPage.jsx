@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserLeagues, createLeague, joinLeague } from '../lib/firestore';
-import { getUpcomingEvents } from '../lib/tba';
+import { getAllEvents } from '../lib/tba';
 import { Plus, LogIn, Users, Trophy, ChevronRight, X } from 'lucide-react';
 
 function Modal({ title, onClose, children }) {
@@ -31,7 +31,9 @@ export default function LeaguesPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [events, setEvents] = useState([]);
 
-  const [createForm, setCreateForm] = useState({ name: '', description: '', rosterSize: 8, eventKey: '', eventName: '' });
+  const [createForm, setCreateForm] = useState({ name: '', description: '', rosterSize: 8, maxMembers: 20, eventKey: '', eventName: '', draftTimerSecs: 60 });
+  const [manualEventKey, setManualEventKey] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +41,7 @@ export default function LeaguesPage() {
   useEffect(() => {
     if (!user) return;
     getUserLeagues(user.uid).then((l) => { setLeagues(l); setLoading(false); });
-    getUpcomingEvents().then(setEvents).catch(() => {});
+    getAllEvents().then(setEvents).catch(() => {});
   }, [user]);
 
   async function handleCreate(e) {
@@ -152,14 +154,14 @@ export default function LeaguesPage() {
 
       {showCreate && (
         <Modal title="Create League" onClose={() => setShowCreate(false)}>
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={handleCreate} className="space-y-3 max-h-[80vh] overflow-y-auto pr-1">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">League Name</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">League Name *</label>
               <input
                 type="text"
                 value={createForm.name}
                 onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                placeholder="e.g. FRC Legends 2025"
+                placeholder="e.g. FRC Legends 2026"
                 className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-blue-500"
                 required
               />
@@ -174,39 +176,99 @@ export default function LeaguesPage() {
                 className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Teams per Roster</label>
+                <select
+                  value={createForm.rosterSize}
+                  onChange={(e) => setCreateForm({ ...createForm, rosterSize: Number(e.target.value) })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <option key={n} value={n}>{n} teams</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Max Members</label>
+                <select
+                  value={createForm.maxMembers}
+                  onChange={(e) => setCreateForm({ ...createForm, maxMembers: Number(e.target.value) })}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  {[2, 4, 6, 8, 10, 15, 20, 30, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n} people</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Roster Size (teams per person)</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Draft Pick Timer</label>
               <select
-                value={createForm.rosterSize}
-                onChange={(e) => setCreateForm({ ...createForm, rosterSize: Number(e.target.value) })}
+                value={createForm.draftTimerSecs}
+                onChange={(e) => setCreateForm({ ...createForm, draftTimerSecs: Number(e.target.value) })}
                 className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
               >
-                {[5, 6, 7, 8, 9, 10, 12, 15].map((n) => (
-                  <option key={n} value={n}>{n} teams</option>
-                ))}
+                <option value={0}>No timer</option>
+                <option value={30}>30 seconds</option>
+                <option value={60}>1 minute</option>
+                <option value={120}>2 minutes</option>
+                <option value={300}>5 minutes</option>
               </select>
             </div>
+
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Link to Event (optional)</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Link to FRC Event</label>
+              <input
+                type="text"
+                value={eventSearch}
+                onChange={(e) => setEventSearch(e.target.value)}
+                placeholder="Search by name or event key..."
+                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-blue-500 mb-1.5"
+              />
               <select
                 value={createForm.eventKey}
                 onChange={(e) => {
                   const ev = events.find((ev) => ev.key === e.target.value);
                   setCreateForm({ ...createForm, eventKey: e.target.value, eventName: ev?.name || '' });
+                  setManualEventKey('');
                 }}
                 className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                size={4}
               >
-                <option value="">No event selected</option>
-                {events.map((ev) => (
-                  <option key={ev.key} value={ev.key}>{ev.name} ({ev.start_date})</option>
-                ))}
+                <option value="">— None —</option>
+                {events
+                  .filter((ev) => !eventSearch || ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || ev.key.includes(eventSearch.toLowerCase()))
+                  .map((ev) => (
+                    <option key={ev.key} value={ev.key}>{ev.name} ({ev.start_date})</option>
+                  ))}
               </select>
+              <div className="mt-2">
+                <p className="text-xs text-slate-500 mb-1">Or enter event key manually (e.g. <span className="text-slate-400">2026casj</span>)</p>
+                <input
+                  type="text"
+                  value={manualEventKey}
+                  onChange={(e) => {
+                    const key = e.target.value.toLowerCase().trim();
+                    setManualEventKey(key);
+                    setCreateForm({ ...createForm, eventKey: key, eventName: key });
+                  }}
+                  placeholder="2026casj"
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              {createForm.eventKey && (
+                <p className="text-green-400 text-xs mt-1.5">Selected: {createForm.eventKey}</p>
+              )}
             </div>
+
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50 mt-1"
             >
               {submitting ? 'Creating...' : 'Create League'}
             </button>

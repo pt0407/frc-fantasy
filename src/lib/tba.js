@@ -36,9 +36,16 @@ export async function getTeam(teamKey) {
 export async function getUpcomingEvents(year = new Date().getFullYear()) {
   const events = await getEvents(year);
   const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - 7);
   return events
-    .filter((e) => new Date(e.end_date) >= now)
+    .filter((e) => new Date(e.end_date) >= cutoff)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+}
+
+export async function getAllEvents(year = new Date().getFullYear()) {
+  const events = await getEvents(year);
+  return events.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 }
 
 export function computeFantasyScore(teamKey, matches, awards = []) {

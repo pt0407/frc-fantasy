@@ -1,7 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bot, LayoutDashboard, Users, Coins, Trophy, LogOut, Menu, X, User } from 'lucide-react';
+import { Bot, LayoutDashboard, Users, Coins, Trophy, LogOut, Menu, X, User, Shield } from 'lucide-react';
 import { useState } from 'react';
+
+const ADMIN_EMAIL = 'pranav07t@gmail.com';
 
 const navLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -35,7 +37,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {navLinks.map(({ to, label, icon: Icon }) => {
+          {[...navLinks, ...(user?.email === ADMIN_EMAIL ? [{ to: '/admin', label: 'Admin', icon: Shield }] : [])].map(({ to, label, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link

@@ -305,9 +305,31 @@ export async function claimDailyCoins(uid) {
 }
 
 export async function getBetLeaderboard(limitCount = 20) {
-  const q = query(collection(db, 'users'), orderBy('betCoins', 'desc'), limit(limitCount));
+  const q = query(collection(db, 'users'), orderBy('betCoins', 'desc'), limit(limitCount + 10));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((u) => !u.lbBlacklisted)
+    .slice(0, limitCount);
+}
+
+export async function getAllUsers() {
+  const snap = await getDocs(collection(db, 'users'));
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .sort((a, b) => (b.betCoins ?? 0) - (a.betCoins ?? 0));
+}
+
+export async function setUserCoins(uid, amount) {
+  await updateDoc(doc(db, 'users', uid), { betCoins: Number(amount) });
+}
+
+export async function addUserCoins(uid, amount) {
+  await updateDoc(doc(db, 'users', uid), { betCoins: increment(Number(amount)) });
+}
+
+export async function toggleLbBlacklist(uid, blacklisted) {
+  await updateDoc(doc(db, 'users', uid), { lbBlacklisted: blacklisted });
 }
 
 export async function getUserBets(uid) {

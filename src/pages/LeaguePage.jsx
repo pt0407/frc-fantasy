@@ -23,7 +23,12 @@ export default function LeaguePage() {
     if (Object.keys(rosters).length === 0) return;
     try {
       const matches = await getEventMatches(leagueData.eventKey);
-      const completed = matches.filter((m) => m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0);
+      const leagueCreatedSecs = leagueData.createdAt?.seconds ?? 0;
+      const completed = matches.filter((m) => {
+        if (!(m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0)) return false;
+        const matchTime = m.actual_time || m.post_result_time || 0;
+        return matchTime === 0 || matchTime >= leagueCreatedSecs;
+      });
       const newScores = {};
       for (const [uid, teamKeys] of Object.entries(rosters)) {
         let total = 0;

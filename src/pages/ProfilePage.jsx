@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import { getUserProfile, getUserLeagues, getUserBets, claimDailyCoins } from '../lib/firestore';
+import { getUserProfile, getUserLeagues, getUserBets, claimDailyCoins, updateDisplayName } from '../lib/firestore';
 import { User, Coins, Trophy, Users, TrendingUp, TrendingDown, Clock, Gift, Star, Pencil, Check, X } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -20,7 +20,9 @@ export default function ProfilePage() {
     if (!nameInput.trim() || !user) return;
     setSavingName(true);
     try {
-      await updateProfile(user, { displayName: nameInput.trim() });
+      const trimmed = nameInput.trim();
+      await updateProfile(user, { displayName: trimmed });
+      await updateDisplayName(user.uid, trimmed);
       setEditingName(false);
     } catch (e) {
       alert('Failed to update name: ' + e.message);

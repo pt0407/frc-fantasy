@@ -119,6 +119,15 @@ export async function updateLeagueSettings(leagueId, settings) {
   await updateDoc(doc(db, 'leagues', leagueId), settings);
 }
 
+export async function updateDisplayName(uid, displayName) {
+  const leagues = await getUserLeagues(uid);
+  await Promise.all(leagues.map((l) => {
+    const updates = { [`memberNames.${uid}`]: displayName };
+    if (l.ownerUid === uid) updates.ownerName = displayName;
+    return updateDoc(doc(db, 'leagues', l.id), updates);
+  }));
+}
+
 export async function getLeague(leagueId) {
   const snap = await getDoc(doc(db, 'leagues', leagueId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

@@ -41,6 +41,7 @@ export default function LeaguesPage() {
     draftVisibility: 'public',
     auctionBudget: 200,
     draftTimerSecs: 60,
+    openJoin: false,
   });
   const [manualEventKey, setManualEventKey] = useState('');
   const [eventSearch, setEventSearch] = useState('');
@@ -332,6 +333,19 @@ export default function LeaguesPage() {
                 <p className="text-blue-300 text-xs">Free Pick: everyone picks their own roster anytime after draft starts. Teams are first-come-first-served — no duplicate picks across the league.</p>
               </div>
             )}
+
+            <div
+              onClick={() => setCreateForm({ ...createForm, openJoin: !createForm.openJoin })}
+              className="flex items-center justify-between bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 cursor-pointer select-none hover:border-slate-500 transition-all"
+            >
+              <div>
+                <p className="text-white text-sm font-medium">Open Joining</p>
+                <p className="text-slate-500 text-xs mt-0.5">Allow members to join after the draft starts. Late joiners only earn points from matches after they join.</p>
+              </div>
+              <div className={`w-10 h-6 rounded-full flex-shrink-0 ml-4 flex items-center px-1 transition-all ${createForm.openJoin ? 'bg-blue-600' : 'bg-[#2a2d3a]'}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-all ${createForm.openJoin ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">Link to FRC Event</label>

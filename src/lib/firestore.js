@@ -56,10 +56,12 @@ export async function createLeague(ownerUid, ownerName, leagueData) {
     draftTimerSecs: leagueData.draftTimerSecs ?? 60,
     eventKey: leagueData.eventKey || '',
     eventName: leagueData.eventName || '',
+    openJoin: leagueData.openJoin || false,
     auctionBudgets: {},
     auctionNomination: null,
     members: [ownerUid],
     memberNames: { [ownerUid]: ownerName },
+    memberJoinedAt: { [ownerUid]: serverTimestamp() },
     scores: { [ownerUid]: 0 },
     rosters: {},
     draftOrder: [],
@@ -79,9 +81,11 @@ export async function joinLeague(code, uid, displayName) {
   const league = leagueDoc.data();
   if (league.members.includes(uid)) throw new Error('Already in league');
   if (league.members.length >= league.maxMembers) throw new Error('League is full');
+  if (league.draftStarted && !league.openJoin) throw new Error('This league is not accepting new members after the draft has started');
   await updateDoc(leagueDoc.ref, {
     members: arrayUnion(uid),
     [`memberNames.${uid}`]: displayName,
+    [`memberJoinedAt.${uid}`]: serverTimestamp(),
     [`scores.${uid}`]: 0,
   });
   return leagueDoc.id;

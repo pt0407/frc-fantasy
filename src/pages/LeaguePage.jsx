@@ -23,17 +23,19 @@ export default function LeaguePage() {
     if (Object.keys(rosters).length === 0) return;
     try {
       const matches = await getEventMatches(leagueData.eventKey);
-      const leagueCreatedSecs = leagueData.createdAt?.seconds ?? 0;
-      const completed = matches.filter((m) => {
-        if (!(m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0)) return false;
-        const matchTime = m.actual_time || m.post_result_time || 0;
-        return matchTime === 0 || matchTime >= leagueCreatedSecs;
-      });
+      const allCompleted = matches.filter((m) => m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0);
       const newScores = {};
       for (const [uid, teamKeys] of Object.entries(rosters)) {
+        const joinedSecs = leagueData.memberJoinedAt?.[uid]?.seconds
+          ?? leagueData.createdAt?.seconds
+          ?? 0;
+        const eligible = allCompleted.filter((m) => {
+          const matchTime = m.actual_time || m.post_result_time || 0;
+          return matchTime === 0 || matchTime >= joinedSecs;
+        });
         let total = 0;
         for (const teamKey of teamKeys) {
-          total += computeFantasyScore(teamKey, completed);
+          total += computeFantasyScore(teamKey, eligible);
         }
         newScores[uid] = total;
       }
@@ -162,6 +164,9 @@ export default function LeaguePage() {
               {[league.draftType, league.draftMode, league.draftVisibility].filter(Boolean).map((tag) => (
                 <span key={tag} className="text-xs bg-[#0f1117] border border-[#2a2d3a] text-slate-400 px-2 py-0.5 rounded-full capitalize">{tag.replace('_',' ')}</span>
               ))}
+              {league.openJoin && (
+                <span className="text-xs bg-green-600/10 border border-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Open Join</span>
+              )}
             </div>
             {lastSync && <p className="text-slate-600 text-xs mt-1">Scores last synced: {lastSync.toLocaleTimeString()}</p>}
           </div>

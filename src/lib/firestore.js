@@ -122,11 +122,14 @@ export async function updateLeagueSettings(leagueId, settings) {
 
 export async function updateDisplayName(uid, displayName) {
   const leagues = await getUserLeagues(uid);
-  await Promise.all(leagues.map((l) => {
-    const updates = { [`memberNames.${uid}`]: displayName };
-    if (l.ownerUid === uid) updates.ownerName = displayName;
-    return updateDoc(doc(db, 'leagues', l.id), updates);
-  }));
+  await Promise.all([
+    updateDoc(doc(db, 'users', uid), { displayName }),
+    ...leagues.map((l) => {
+      const updates = { [`memberNames.${uid}`]: displayName };
+      if (l.ownerUid === uid) updates.ownerName = displayName;
+      return updateDoc(doc(db, 'leagues', l.id), updates);
+    }),
+  ]);
 }
 
 export async function getLeague(leagueId) {

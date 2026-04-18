@@ -21,7 +21,8 @@ export async function createUserProfile(uid, data) {
     displayName: data.displayName || '',
     email: data.email || '',
     photoURL: data.photoURL || '',
-    betCoins: 1000,
+    betCoins: 100,
+    lastDailyClaim: null,
     createdAt: serverTimestamp(),
     ...data,
   }, { merge: true });
@@ -145,6 +146,26 @@ export async function placeBet(uid, matchKey, alliance, amount, matchDescription
   });
 
   await updateDoc(userRef, { betCoins: increment(-amount) });
+}
+
+export async function claimDailyCoins(uid) {
+  const userRef = doc(db, 'users', uid);
+  const user = await getUserProfile(uid);
+  if (!user) throw new Error('User not found');
+  const now = new Date();
+  if (user.lastDailyClaim) {
+    const last = user.lastDailyClaim.toDate ? user.lastDailyClaim.toDate() : new Date(user.lastDailyClaim);
+    const diffHours = (now - last) / (1000 * 60 * 60);
+    if (diffHours < 24) {
+      const hoursLeft = Math.ceil(24 - diffHours);
+      throw new Error(`Already claimed today. Come back in ${hoursLeft}h`);
+    }
+  }
+  await updateDoc(userRef, {
+    betCoins: increment(50),
+    lastDailyClaim: serverTimestamp(),
+  });
+  return 50;
 }
 
 export async function getUserBets(uid) {

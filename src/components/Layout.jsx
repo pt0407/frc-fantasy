@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bot, LayoutDashboard, Users, Coins, Trophy, LogOut, Menu, X } from 'lucide-react';
+import { Bot, LayoutDashboard, Users, Coins, Trophy, LogOut, Menu, X, User } from 'lucide-react';
 import { useState } from 'react';
 
 const navLinks = [
@@ -8,6 +8,7 @@ const navLinks = [
   { to: '/leagues', label: 'Leagues', icon: Users },
   { to: '/betting', label: 'Betting', icon: Coins },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { to: '/profile', label: 'My Profile', icon: User },
 ];
 
 export default function Layout({ children }) {

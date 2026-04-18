@@ -8,6 +8,7 @@ import LeaguePage from './pages/LeaguePage';
 import DraftPage from './pages/DraftPage';
 import BettingPage from './pages/BettingPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import ProfilePage from './pages/ProfilePage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -40,6 +41,7 @@ function AppRoutes() {
       <Route path="/leagues/:id/draft" element={<PrivateRoute><Layout><DraftPage /></Layout></PrivateRoute>} />
       <Route path="/betting" element={<PrivateRoute><Layout><BettingPage /></Layout></PrivateRoute>} />
       <Route path="/leaderboard" element={<PrivateRoute><Layout><LeaderboardPage /></Layout></PrivateRoute>} />
+      <Route path="/profile" element={<PrivateRoute><Layout><ProfilePage /></Layout></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

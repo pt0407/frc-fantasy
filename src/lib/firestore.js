@@ -15,6 +15,7 @@ import {
   deleteDoc,
   deleteField,
   increment,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -207,14 +208,21 @@ export async function makeDraftPick(leagueId, uid, teamKey, teamName) {
   const draftType = league.draftType || 'snake';
 
   if (draftType === 'free_pick') {
-    const myRoster = league.rosters?.[uid] || [];
-    if (myRoster.length >= league.rosterSize) throw new Error('Your roster is full');
-    const allRosters = Object.values(league.rosters || {});
-    const newTotal = allRosters.reduce((s, r) => s + r.length, 0) + 1;
-    const maxPicks = league.rosterSize * league.members.length;
-    await updateDoc(doc(db, 'leagues', leagueId), {
-      [`rosters.${uid}`]: arrayUnion(teamKey),
-      draftComplete: newTotal >= maxPicks,
+    const leagueRef = doc(db, 'leagues', leagueId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(leagueRef);
+      if (!snap.exists()) throw new Error('League not found');
+      const data = snap.data();
+      const allPicked = Object.values(data.rosters || {}).flat();
+      if (allPicked.includes(teamKey)) throw new Error('Team already taken — someone else picked it first!');
+      const myRoster = data.rosters?.[uid] || [];
+      if (myRoster.length >= data.rosterSize) throw new Error('Your roster is full');
+      const newTotal = allPicked.length + 1;
+      const maxPicks = data.rosterSize * data.members.length;
+      tx.update(leagueRef, {
+        [`rosters.${uid}`]: arrayUnion(teamKey),
+        draftComplete: newTotal >= maxPicks,
+      });
     });
   } else {
     const n = league.draftOrder.length;

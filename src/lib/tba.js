@@ -94,10 +94,14 @@ export function computeFantasyScore(teamKey, matches, awards = []) {
 
   for (const award of awards) {
     if (award.recipient_list?.some((r) => r.team_key === teamKey)) {
-      if (award.award_type === 0) score += 50;
-      else if (award.award_type === 9) score += 30;
-      else if (award.award_type === 16) score += 20;
-      else score += 10;
+      const t = award.award_type;
+      if (t === 0) score += 50;        // FIRST Impact (Chairman's)
+      else if (t === 1) score += 40;   // Winner
+      else if (t === 2) score += 25;   // Finalist
+      else if (t === 9) score += 30;   // Engineering Inspiration
+      else if (t === 10) score += 20;  // Rookie All-Star
+      else if (t === 16) score += 15;  // Gracious Professionalism
+      else score += 10;                // All other awards
     }
   }
 

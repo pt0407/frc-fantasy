@@ -331,6 +331,38 @@ export default function LeaguePage() {
         </div>
       )}
 
+      <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-5">
+        <details>
+          <summary className="text-white font-semibold text-sm cursor-pointer select-none flex items-center gap-2">
+            <span>📊 How Points Are Calculated</span>
+          </summary>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-400">
+            <div>
+              <p className="text-slate-300 font-semibold mb-2 uppercase tracking-wider text-[10px]">Per Match</p>
+              <ul className="space-y-1">
+                <li>• Alliance score ÷ 10 <span className="text-slate-500">(rounded down)</span></li>
+                <li>• Win bonus: <span className="text-green-400 font-medium">+5 pts</span></li>
+                <li>• Each ranking point: <span className="text-blue-400 font-medium">+3 pts</span></li>
+                <li>• Auto points ÷ 5 bonus</li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-slate-300 font-semibold mb-2 uppercase tracking-wider text-[10px]">Awards</p>
+              <ul className="space-y-1">
+                <li>• FIRST Impact Award: <span className="text-yellow-400 font-medium">+50 pts</span></li>
+                <li>• Event Winner: <span className="text-yellow-400 font-medium">+40 pts</span></li>
+                <li>• Engineering Inspiration: <span className="text-blue-400 font-medium">+30 pts</span></li>
+                <li>• Event Finalist: <span className="text-slate-300 font-medium">+25 pts</span></li>
+                <li>• Rookie All-Star: <span className="text-slate-300 font-medium">+20 pts</span></li>
+                <li>• Gracious Professionalism: <span className="text-slate-300 font-medium">+15 pts</span></li>
+                <li>• Other awards: <span className="text-slate-300 font-medium">+10 pts</span></li>
+              </ul>
+              <p className="text-slate-600 mt-2 text-[10px]">Awards may not appear until TBA posts them after the event.</p>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-5">

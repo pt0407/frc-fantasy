@@ -144,7 +144,10 @@ export default function LeaguesPage() {
                   <div>
                     <p className="text-white font-semibold">{league.name}</p>
                     <p className="text-slate-500 text-sm">
-                      {league.members.length}/100 members · {league.eventName || 'No event'} · Roster: {league.rosterSize} teams
+                      {league.members.length}/{league.maxMembers || 100} members · {league.eventName || 'No event'} · Roster: {league.rosterSize} teams
+                    </p>
+                    <p className="text-slate-600 text-xs mt-0.5">
+                      {league.members.slice(0, 4).map((uid) => league.memberNames?.[uid] || 'Unknown').join(', ')}{league.members.length > 4 ? ` +${league.members.length - 4} more` : ''}
                     </p>
                     {league.ownerUid === user.uid && (
                       <span className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full mt-1 inline-block">Owner</span>

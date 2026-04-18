@@ -291,15 +291,17 @@ export async function claimDailyCoins(uid) {
 }
 
 export async function getUserBets(uid) {
-  const q = query(collection(db, 'bets'), where('uid', '==', uid), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'bets'), where('uid', '==', uid));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
 }
 
 export async function resolvePendingBets(uid) {
-  const q = query(collection(db, 'bets'), where('uid', '==', uid), where('status', '==', 'pending'));
+  const q = query(collection(db, 'bets'), where('uid', '==', uid));
   const snap = await getDocs(q);
-  const pending = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const pending = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => b.status === 'pending');
   if (pending.length === 0) return 0;
 
   const TBA_KEY = import.meta.env.VITE_TBA_KEY;

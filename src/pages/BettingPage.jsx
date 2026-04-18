@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getUserProfile, placeBet, getUserBets } from '../lib/firestore';
+import { getUserProfile, placeBet, getUserBets, resolvePendingBets } from '../lib/firestore';
 import { getUpcomingEvents, getEventMatches } from '../lib/tba';
 import { Coins, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
 
@@ -98,15 +98,38 @@ export default function BettingPage() {
   const [betModal, setBetModal] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [tab, setTab] = useState('matches');
+  const [resolving, setResolving] = useState(false);
+
+  async function refreshBets() {
+    const [p, b] = await Promise.all([
+      getUserProfile(user.uid),
+      getUserBets(user.uid).catch(() => []),
+    ]);
+    setProfile(p);
+    setMyBets(b);
+  }
+
+  async function handleResolve() {
+    setResolving(true);
+    try {
+      await resolvePendingBets(user.uid);
+      await refreshBets();
+    } catch (e) { console.error(e); }
+    finally { setResolving(false); }
+  }
 
   useEffect(() => {
     if (!user) return;
-    getUserProfile(user.uid).then(setProfile);
-    getUserBets(user.uid).then(setMyBets).catch(() => {});
+    refreshBets();
+    resolvePendingBets(user.uid).then(() => refreshBets()).catch(() => {});
     getUpcomingEvents().then((e) => {
       setEvents(e);
       if (e.length > 0) setSelectedEvent(e[0].key);
     }).catch(() => {});
+    const interval = setInterval(() => {
+      resolvePendingBets(user.uid).then(() => refreshBets()).catch(() => {});
+    }, 60 * 1000);
+    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
@@ -122,15 +145,14 @@ export default function BettingPage() {
   }, [selectedEvent]);
 
   async function handleBet(match, alliance, amount) {
-    const desc = `${match.event_key} - ${match.comp_level?.toUpperCase()} ${match.match_number} - ${alliance.toUpperCase()} Alliance`;
+    const desc = match.comp_level === 'qm'
+      ? `Qual ${match.match_number} — ${alliance.toUpperCase()} Alliance`
+      : `${match.comp_level?.toUpperCase()} Match ${match.match_number} — ${alliance.toUpperCase()} Alliance`;
     await placeBet(user.uid, match.key, alliance, amount, desc);
-    const updated = await getUserProfile(user.uid);
-    setProfile(updated);
-    const bets = await getUserBets(user.uid);
-    setMyBets(bets);
+    await refreshBets();
   }
 
-  const alreadyBet = new Set(myBets.filter((b) => b.status === 'pending').map((b) => b.matchKey));
+  const alreadyBet = new Set(myBets.map((b) => b.matchKey));
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -237,6 +259,16 @@ export default function BettingPage() {
 
       {tab === 'mybets' && (
         <div className="space-y-3">
+          {myBets.some((b) => b.status === 'pending') && (
+            <button
+              onClick={handleResolve}
+              disabled={resolving}
+              className="w-full py-2.5 bg-[#1a1d27] border border-[#2a2d3a] hover:border-blue-500/40 text-slate-300 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Clock className="w-4 h-4" />
+              {resolving ? 'Checking results...' : 'Check & Resolve Pending Bets'}
+            </button>
+          )}
           {myBets.length === 0 ? (
             <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-12 text-center">
               <Coins className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -265,6 +297,11 @@ export default function BettingPage() {
                   {bet.result === 'loss' && (
                     <span className="flex items-center gap-1 text-red-400 text-sm font-bold">
                       <XCircle className="w-3.5 h-3.5" /> -{bet.amount}
+                    </span>
+                  )}
+                  {bet.result === 'tie' && (
+                    <span className="flex items-center gap-1 text-slate-400 text-sm font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Tie (refunded)
                     </span>
                   )}
                 </div>

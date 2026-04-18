@@ -296,6 +296,47 @@ export async function getUserBets(uid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+export async function resolvePendingBets(uid) {
+  const q = query(collection(db, 'bets'), where('uid', '==', uid), where('status', '==', 'pending'));
+  const snap = await getDocs(q);
+  const pending = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (pending.length === 0) return 0;
+
+  const TBA_KEY = import.meta.env.VITE_TBA_KEY;
+  let resolved = 0;
+
+  for (const bet of pending) {
+    try {
+      const res = await fetch(`https://www.thebluealliance.com/api/v3/match/${bet.matchKey}`, {
+        headers: { 'X-TBA-Auth-Key': TBA_KEY },
+      });
+      if (!res.ok) continue;
+      const match = await res.json();
+      const redScore = match.alliances?.red?.score ?? -1;
+      const blueScore = match.alliances?.blue?.score ?? -1;
+      if (redScore < 0 || blueScore < 0) continue;
+
+      const winner = redScore > blueScore ? 'red' : blueScore > redScore ? 'blue' : 'tie';
+      const betRef = doc(db, 'bets', bet.id);
+      const userRef = doc(db, 'users', uid);
+
+      if (winner === 'tie') {
+        await updateDoc(userRef, { betCoins: increment(bet.amount) });
+        await updateDoc(betRef, { status: 'resolved', result: 'tie' });
+      } else if (bet.alliance === winner) {
+        await updateDoc(userRef, { betCoins: increment(bet.amount * 2) });
+        await updateDoc(betRef, { status: 'resolved', result: 'win' });
+      } else {
+        await updateDoc(betRef, { status: 'resolved', result: 'loss' });
+      }
+      resolved++;
+    } catch (e) {
+      console.error('Failed to resolve bet:', bet.id, e);
+    }
+  }
+  return resolved;
+}
+
 export async function updateLeagueScores(leagueId, scores) {
   const updates = {};
   for (const [uid, score] of Object.entries(scores)) {

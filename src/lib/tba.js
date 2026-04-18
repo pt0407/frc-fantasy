@@ -25,6 +25,10 @@ export async function getEventMatches(eventKey) {
   return tbaFetch(`/event/${eventKey}/matches`);
 }
 
+export async function getMatch(matchKey) {
+  return tbaFetch(`/match/${matchKey}`);
+}
+
 export async function getEventRankings(eventKey) {
   return tbaFetch(`/event/${eventKey}/rankings`);
 }

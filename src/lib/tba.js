@@ -45,7 +45,11 @@ export async function getUpcomingEvents(year = new Date().getFullYear()) {
 
 export async function getAllEvents(year = new Date().getFullYear()) {
   const events = await getEvents(year);
-  return events.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return events
+    .filter((e) => new Date(e.end_date) >= now)
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 }
 
 export function computeFantasyScore(teamKey, matches, awards = []) {

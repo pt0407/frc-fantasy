@@ -221,11 +221,11 @@ export async function makeDraftPick(leagueId, uid, teamKey, teamName) {
       const myRoster = data.rosters?.[uid] || [];
       if (myRoster.includes(teamKey)) throw new Error('You already picked this team');
       if (myRoster.length >= data.rosterSize) throw new Error('Your roster is full');
-      const newTotal = isUnique ? allPicked.length + 1 : Object.values(data.rosters || {}).reduce((s,r)=>s+r.length,0) + 1;
-      const maxPicks = data.rosterSize * data.members.length;
+      const updatedRosters = { ...data.rosters, [uid]: [...(data.rosters?.[uid] || []), teamKey] };
+      const allFull = data.members.every((m) => (updatedRosters[m] || []).length >= data.rosterSize);
       tx.update(leagueRef, {
         [`rosters.${uid}`]: arrayUnion(teamKey),
-        draftComplete: newTotal >= maxPicks,
+        draftComplete: allFull,
       });
     });
   } else {

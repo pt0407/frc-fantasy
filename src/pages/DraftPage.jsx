@@ -225,9 +225,11 @@ export default function DraftPage() {
               ) : (
                 filteredTeams.map((team) => {
                   const key = `frc${team.team_number}`;
-                  const canAct = !league.draftComplete && (
-                    draftType === 'auction' ? (!nom && !league.draftComplete) : isMyTurn
-                  );
+                  const canAct = draftType === 'free_pick'
+                    ? myRoster.length < league.rosterSize
+                    : !league.draftComplete && (
+                        draftType === 'auction' ? !nom : isMyTurn
+                      );
                   const isSelected = selectedTeam?.team_number === team.team_number;
                   return (
                     <button key={key}

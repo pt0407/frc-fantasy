@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getLeague, startDraft } from '../lib/firestore';
-import { Trophy, Users, Copy, Check, Zap, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { getLeague, startDraft, updateLeagueScores } from '../lib/firestore';
+import { getEventMatches, computeFantasyScore } from '../lib/tba';
+import { Trophy, Users, Copy, Check, Zap, ChevronRight, RefreshCw } from 'lucide-react';
 
 export default function LeaguePage() {
   const { id } = useParams();
@@ -13,14 +13,55 @@ export default function LeaguePage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+
+  const syncScores = useCallback(async (leagueData) => {
+    if (!leagueData?.eventKey || !leagueData?.draftComplete) return;
+    const rosters = leagueData.rosters || {};
+    if (Object.keys(rosters).length === 0) return;
+    try {
+      const matches = await getEventMatches(leagueData.eventKey);
+      const completed = matches.filter((m) => m.alliances?.red?.score > 0 || m.alliances?.blue?.score > 0);
+      const newScores = {};
+      for (const [uid, teamKeys] of Object.entries(rosters)) {
+        let total = 0;
+        for (const teamKey of teamKeys) {
+          total += computeFantasyScore(teamKey, completed);
+        }
+        newScores[uid] = total;
+      }
+      await updateLeagueScores(leagueData.id, newScores);
+      setLastSync(new Date());
+      const updated = await getLeague(leagueData.id);
+      setLeague(updated);
+    } catch (e) {
+      console.error('Score sync failed:', e);
+    }
+  }, []);
 
   useEffect(() => {
-    getLeague(id).then((l) => { setLeague(l); setLoading(false); });
-    const interval = setInterval(() => {
-      getLeague(id).then(setLeague);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id]);
+    async function init() {
+      const l = await getLeague(id);
+      setLeague(l);
+      setLoading(false);
+      if (l?.draftComplete && l?.eventKey) syncScores(l);
+    }
+    init();
+    const pollInterval = setInterval(() => getLeague(id).then(setLeague), 5000);
+    const syncInterval = setInterval(async () => {
+      const l = await getLeague(id);
+      if (l?.draftComplete && l?.eventKey) syncScores(l);
+    }, 5 * 60 * 1000);
+    return () => { clearInterval(pollInterval); clearInterval(syncInterval); };
+  }, [id, syncScores]);
+
+  async function handleManualSync() {
+    if (!league || syncing) return;
+    setSyncing(true);
+    await syncScores(league);
+    setSyncing(false);
+  }
 
   function copyCode() {
     navigator.clipboard.writeText(league.inviteCode);
@@ -69,10 +110,21 @@ export default function LeaguePage() {
               {isOwner && <span className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Owner</span>}
             </div>
             {league.description && <p className="text-slate-400 text-sm">{league.description}</p>}
-            <p className="text-slate-500 text-sm mt-1">{league.members.length}/100 members · {league.eventName || 'No event linked'} · Roster: {league.rosterSize} teams</p>
+            <p className="text-slate-500 text-sm mt-1">{league.members.length}/{league.maxMembers || 100} members · {league.eventName || 'No event linked'} · Roster: {league.rosterSize} teams</p>
+            {lastSync && <p className="text-slate-600 text-xs mt-0.5">Scores last synced: {lastSync.toLocaleTimeString()}</p>}
           </div>
 
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+            {league.draftComplete && league.eventKey && (
+              <button
+                onClick={handleManualSync}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600/20 border border-green-500/30 hover:border-green-500/60 text-green-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Scores'}
+              </button>
+            )}
             <button
               onClick={copyCode}
               className="flex items-center gap-2 px-4 py-2 bg-[#0f1117] border border-[#2a2d3a] hover:border-slate-500 text-slate-300 rounded-xl text-sm font-medium transition-all"

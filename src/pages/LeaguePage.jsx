@@ -300,7 +300,7 @@ export default function LeaguePage() {
               </button>
             )}
 
-            {league.draftStarted && (!league.draftComplete || (league.draftType === 'free_pick' && myRoster.length < (league.rosterSize || 8))) && (
+            {league.draftStarted && (league.draftType === 'free_pick' ? myRoster.length < (league.rosterSize || 8) : !league.draftComplete) && (
               <Link
                 to={`/leagues/${id}/draft`}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all"
@@ -393,7 +393,7 @@ export default function LeaguePage() {
               <Users className="w-5 h-5 text-blue-400" />
               <h2 className="text-white font-semibold text-lg">My Roster</h2>
             </div>
-            {league.draftStarted && (!league.draftComplete || (league.draftType === 'free_pick' && myRoster.length < (league.rosterSize || 8))) && (
+            {league.draftStarted && (league.draftType === 'free_pick' ? myRoster.length < (league.rosterSize || 8) : !league.draftComplete) && (
               <Link to={`/leagues/${id}/draft`} className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1">
                 Draft room <ChevronRight className="w-3 h-3" />
               </Link>

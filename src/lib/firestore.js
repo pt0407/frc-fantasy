@@ -335,6 +335,19 @@ export async function toggleLbBlacklist(uid, blacklisted) {
   await updateDoc(doc(db, 'users', uid), { lbBlacklisted: blacklisted });
 }
 
+export async function emergencyWipe() {
+  const [usersSnap, betsSnap, leaguesSnap] = await Promise.all([
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'bets')),
+    getDocs(collection(db, 'leagues')),
+  ]);
+  await Promise.all([
+    ...usersSnap.docs.map((d) => deleteDoc(d.ref)),
+    ...betsSnap.docs.map((d) => deleteDoc(d.ref)),
+    ...leaguesSnap.docs.map((d) => deleteDoc(d.ref)),
+  ]);
+}
+
 export async function getUserBets(uid) {
   const q = query(collection(db, 'bets'), where('uid', '==', uid));
   const snap = await getDocs(q);

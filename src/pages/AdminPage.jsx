@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getAllUsers, setUserCoins, addUserCoins, toggleLbBlacklist } from '../lib/firestore';
-import { Coins, Shield, Search, EyeOff, Eye, Plus, RefreshCw } from 'lucide-react';
+import { getAllUsers, setUserCoins, addUserCoins, toggleLbBlacklist, emergencyWipe } from '../lib/firestore';
+import { Coins, Shield, Search, EyeOff, Eye, Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 
 const ADMIN_EMAIL = 'pranav07t@gmail.com';
 
@@ -12,6 +12,21 @@ export default function AdminPage() {
   const [search, setSearch] = useState('');
   const [coinInputs, setCoinInputs] = useState({});
   const [working, setWorking] = useState({});
+  const [wipeStep, setWipeStep] = useState(0);
+  const [wiping, setWiping] = useState(false);
+
+  async function handleWipe() {
+    setWiping(true);
+    try {
+      await emergencyWipe();
+      setUsers([]);
+      setWipeStep(0);
+    } catch (e) {
+      alert('Wipe failed: ' + e.message);
+    } finally {
+      setWiping(false);
+    }
+  }
 
   if (user?.email !== ADMIN_EMAIL) {
     return <div className="text-center text-slate-400 py-20">Access denied.</div>;
@@ -71,10 +86,51 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
           <p className="text-slate-400 text-sm">Manage users, coins & leaderboard</p>
         </div>
-        <button onClick={load} className="ml-auto text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-all">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={load} className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-all">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => setWipeStep(1)}
+            className="flex items-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold transition-all"
+          >
+            <Trash2 className="w-4 h-4" /> Emergency Wipe
+          </button>
+        </div>
       </div>
+
+      {wipeStep > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setWipeStep(0)} />
+          <div className="relative bg-[#1a1d27] border border-red-500/40 rounded-2xl p-7 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
+              <h2 className="text-white font-bold text-lg">Emergency Wipe</h2>
+            </div>
+            {wipeStep === 1 && (
+              <>
+                <p className="text-slate-300 text-sm mb-6">This will permanently delete <strong className="text-red-400">all users, leagues, and bets</strong>. This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setWipeStep(0)} className="flex-1 py-2.5 border border-[#2a2d3a] text-slate-300 rounded-xl text-sm hover:border-slate-500 transition-all">Cancel</button>
+                  <button onClick={() => setWipeStep(2)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all">Continue →</button>
+                </div>
+              </>
+            )}
+            {wipeStep === 2 && (
+              <>
+                <p className="text-red-400 text-sm font-semibold mb-2">Are you absolutely sure?</p>
+                <p className="text-slate-400 text-xs mb-6">There is no recovery. Every account, league, and bet will be gone forever.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setWipeStep(0)} className="flex-1 py-2.5 border border-[#2a2d3a] text-slate-300 rounded-xl text-sm hover:border-slate-500 transition-all">Cancel</button>
+                  <button onClick={handleWipe} disabled={wiping} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50">
+                    {wiping ? 'Wiping...' : '🗑 WIPE EVERYTHING'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-5">
